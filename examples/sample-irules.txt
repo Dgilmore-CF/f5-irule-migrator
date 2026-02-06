@@ -1,0 +1,229 @@
+# F5 iRule Examples for Testing the Converter
+# Each section demonstrates a different Cloudflare rule type conversion
+# Copy and paste these into the converter to see the results
+
+# ============================================================================
+# EXAMPLE 1: SINGLE REDIRECTS (HTTP::redirect)
+# Converts to: Cloudflare Single Redirect Rules
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Redirect /old-path to new location
+    if { [HTTP::uri] starts_with "/old-path" } {
+        HTTP::redirect "https://www.example.com/new-path"
+    }
+    
+    # Redirect legacy API endpoints
+    if { [HTTP::uri] starts_with "/api/v1" } {
+        HTTP::redirect "https://api.example.com/api/v2[HTTP::uri]"
+    }
+    
+    # Redirect based on exact match
+    if { [HTTP::uri] eq "/legacy-page" } {
+        HTTP::redirect "https://www.example.com/modern-page"
+    }
+}
+
+# ============================================================================
+# EXAMPLE 2: URL REWRITES (HTTP::uri modifications)
+# Converts to: Cloudflare Transform Rules - URL Rewrite
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Rewrite URL path internally (no redirect to client)
+    if { [HTTP::uri] starts_with "/products" } {
+        HTTP::uri "/catalog/items"
+    }
+    
+    # Rewrite for SEO-friendly URLs
+    if { [HTTP::uri] contains "/article/" } {
+        HTTP::uri "/blog/posts/[HTTP::uri]"
+    }
+}
+
+# ============================================================================
+# EXAMPLE 3: REQUEST HEADER TRANSFORMS (HTTP::header in HTTP_REQUEST)
+# Converts to: Cloudflare Transform Rules - Modify Request Header
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Insert a new header
+    HTTP::header insert "X-Forwarded-Proto" "https"
+    HTTP::header insert "X-Real-IP" "[IP::client_addr]"
+    HTTP::header insert "X-Request-ID" "[TMM::cmp_unit][clock clicks]"
+    
+    # Remove sensitive headers
+    HTTP::header remove "X-Debug-Mode"
+    HTTP::header remove "X-Internal-Token"
+    
+    # Replace/modify existing headers
+    HTTP::header replace "Host" "backend.example.com"
+    HTTP::header replace "User-Agent" "CustomAgent/1.0"
+}
+
+# ============================================================================
+# EXAMPLE 4: RESPONSE HEADER TRANSFORMS (HTTP::header in HTTP_RESPONSE)
+# Converts to: Cloudflare Transform Rules - Modify Response Header
+# ============================================================================
+
+when HTTP_RESPONSE {
+    # Security headers
+    HTTP::header insert "X-Frame-Options" "SAMEORIGIN"
+    HTTP::header insert "X-Content-Type-Options" "nosniff"
+    HTTP::header insert "X-XSS-Protection" "1; mode=block"
+    HTTP::header insert "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+    HTTP::header insert "Content-Security-Policy" "default-src 'self'"
+    HTTP::header insert "Referrer-Policy" "strict-origin-when-cross-origin"
+    
+    # Remove server information headers
+    HTTP::header remove "Server"
+    HTTP::header remove "X-Powered-By"
+    HTTP::header remove "X-AspNet-Version"
+    
+    # Custom response headers
+    HTTP::header insert "X-Cache-Status" "HIT"
+    HTTP::header insert "X-Served-By" "cloudflare-edge"
+}
+
+# ============================================================================
+# EXAMPLE 5: ORIGIN RULES (pool/node routing)
+# Converts to: Cloudflare Origin Rules
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Route API traffic to API backend pool
+    if { [HTTP::uri] starts_with "/api" } {
+        pool api_server_pool
+    }
+    
+    # Route static content to CDN origin
+    if { [HTTP::uri] starts_with "/static" } {
+        pool cdn_origin_pool
+    }
+    
+    # Route admin traffic to secure backend
+    if { [HTTP::uri] starts_with "/admin" } {
+        pool admin_server_pool
+    }
+    
+    # Route based on host header
+    if { [HTTP::host] contains "api.example.com" } {
+        node 10.0.1.100 8080
+    }
+    
+    # Route websocket traffic
+    if { [HTTP::uri] starts_with "/ws" } {
+        pool websocket_pool
+    }
+}
+
+# ============================================================================
+# EXAMPLE 6: COMPLEX LOGIC (Requires Cloudflare Snippets)
+# These patterns are too complex for declarative rules
+# Converts to: Cloudflare Snippets suggestion
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Complex conditional logic with variables
+    set uri [HTTP::uri]
+    set host [HTTP::host]
+    
+    if { $uri starts_with "/secure" } {
+        if { [HTTP::header exists "Authorization"] } {
+            set auth_header [HTTP::header "Authorization"]
+            if { $auth_header starts_with "Bearer " } {
+                # Token validation logic
+                set token [string range $auth_header 7 end]
+                if { [string length $token] < 20 } {
+                    HTTP::respond 401 content "Invalid token"
+                }
+            }
+        } else {
+            HTTP::respond 401 content "Authorization required"
+        }
+    }
+    
+    # Rate limiting with counters
+    set client_ip [IP::client_addr]
+    set rate_key "rate_$client_ip"
+    
+    # Cookie manipulation
+    if { [HTTP::cookie exists "session_id"] } {
+        set session [HTTP::cookie "session_id"]
+        HTTP::header insert "X-Session-ID" $session
+    }
+    
+    # Request body inspection
+    if { [HTTP::method] eq "POST" } {
+        set content_length [HTTP::header "Content-Length"]
+        if { $content_length > 1048576 } {
+            HTTP::respond 413 content "Request too large"
+        }
+    }
+}
+
+when LB_SELECTED {
+    # Persistence and load balancing logic
+    persist uie [HTTP::cookie "JSESSIONID"]
+}
+
+when CLIENT_ACCEPTED {
+    # TCP-level handling
+    TCP::collect
+}
+
+# ============================================================================
+# EXAMPLE 7: COMBINED REAL-WORLD SCENARIO
+# A typical production iRule with multiple functions
+# ============================================================================
+
+when HTTP_REQUEST {
+    # Log all requests (for debugging)
+    log local0. "Request: [HTTP::method] [HTTP::uri] from [IP::client_addr]"
+    
+    # Force HTTPS redirect
+    if { [HTTP::uri] starts_with "/secure" } {
+        HTTP::redirect "https://[HTTP::host][HTTP::uri]"
+    }
+    
+    # API versioning redirect
+    if { [HTTP::uri] starts_with "/api/v1" } {
+        HTTP::redirect "https://api.example.com/api/v2[HTTP::uri]"
+    }
+    
+    # Add tracing headers
+    HTTP::header insert "X-Trace-ID" "[TMM::cmp_unit]-[clock clicks]"
+    HTTP::header insert "X-Forwarded-For" "[IP::client_addr]"
+    HTTP::header insert "X-Forwarded-Proto" "https"
+    
+    # Remove potentially dangerous headers
+    HTTP::header remove "X-Forwarded-Host"
+    HTTP::header remove "X-Original-URL"
+    
+    # Route to different backends based on path
+    if { [HTTP::uri] starts_with "/api" } {
+        pool api_backend_pool
+    }
+    if { [HTTP::uri] starts_with "/static" } {
+        pool static_content_pool
+    }
+    if { [HTTP::uri] starts_with "/admin" } {
+        pool admin_backend_pool
+    }
+}
+
+when HTTP_RESPONSE {
+    # Security headers for all responses
+    HTTP::header insert "X-Frame-Options" "DENY"
+    HTTP::header insert "X-Content-Type-Options" "nosniff"
+    HTTP::header insert "Strict-Transport-Security" "max-age=31536000"
+    
+    # Remove server fingerprinting
+    HTTP::header remove "Server"
+    HTTP::header remove "X-Powered-By"
+    
+    # Add cache control for static assets
+    if { [HTTP::uri] starts_with "/static" } {
+        HTTP::header insert "Cache-Control" "public, max-age=31536000"
+    }
+}

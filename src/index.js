@@ -4,893 +4,714 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>F5 iRule to Cloudflare Rules Converter</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
-    .tab-active { background-color: #f97316; color: white; }
-    .tab-inactive { background-color: #1f2937; color: #9ca3af; }
-    .copy-btn:hover { background-color: #374151; }
-    pre code { font-size: 0.875rem; }
+    :root{--cf-orange:#F6821F;--cf-orange-dark:#E06E0D;--cf-gray-50:#F9FAFB;--cf-gray-100:#F2F4F8;--cf-gray-200:#E5E9F0;--cf-gray-300:#D1D5DB;--cf-gray-400:#9CA3AF;--cf-gray-500:#6B7280;--cf-gray-600:#4B5563;--cf-gray-700:#374151;--cf-gray-800:#1F2937;--cf-gray-900:#111827}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(180deg,#FAFBFC 0%,#F2F4F8 100%);min-height:100vh;color:var(--cf-gray-800);line-height:1.6}
+    .container{max-width:1200px;margin:0 auto;padding:0 24px}
+    .header{background:linear-gradient(135deg,var(--cf-gray-900) 0%,#1a1a2e 100%);padding:48px 0;margin-bottom:48px}
+    .header-content{text-align:center}
+    .logo-icon{margin-bottom:20px}
+    .logo-icon svg{filter:drop-shadow(0 4px 12px rgba(246,130,31,0.3))}
+    .header h1{color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px;margin-bottom:12px}
+    .header p{color:var(--cf-gray-400);font-size:16px;max-width:600px;margin-left:auto;margin-right:auto}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(246,130,31,0.15);color:var(--cf-orange);padding:6px 12px;border-radius:20px;font-size:13px;font-weight:500;margin-top:16px}
+    .main{padding-bottom:64px}
+    .card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.04);border:1px solid var(--cf-gray-200);overflow:hidden;margin-bottom:32px}
+    .tabs{display:flex;border-bottom:1px solid var(--cf-gray-200);background:var(--cf-gray-50)}
+    .tab{padding:16px 24px;font-size:14px;font-weight:500;color:var(--cf-gray-500);background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s ease}
+    .tab:hover{color:var(--cf-gray-700);background:var(--cf-gray-100)}
+    .tab.active{color:var(--cf-orange);border-bottom-color:var(--cf-orange);background:#fff}
+    .tab svg{width:18px;height:18px}
+    .tab-content{padding:32px;display:none}
+    .tab-content.active{display:block}
+    .upload-zone{border:2px dashed var(--cf-gray-300);border-radius:12px;padding:48px;text-align:center;transition:all 0.2s ease;background:var(--cf-gray-50)}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--cf-orange);background:rgba(246,130,31,0.04)}
+    .upload-icon{width:64px;height:64px;margin:0 auto 16px;color:var(--cf-gray-400)}
+    .upload-zone h3{font-size:16px;font-weight:600;color:var(--cf-gray-700);margin-bottom:8px}
+    .upload-zone p{font-size:14px;color:var(--cf-gray-500);margin-bottom:16px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:600;border-radius:8px;border:none;cursor:pointer;transition:all 0.2s ease;font-family:inherit}
+    .btn-primary{background:var(--cf-orange);color:#fff;box-shadow:0 1px 2px rgba(246,130,31,0.2)}
+    .btn-primary:hover{background:var(--cf-orange-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(246,130,31,0.3)}
+    .btn-primary:disabled{opacity:0.7;cursor:not-allowed;transform:none}
+    .btn-lg{padding:16px 32px;font-size:16px}
+    .file-info{display:none;align-items:center;gap:12px;margin-top:16px;padding:12px 16px;background:#ECFDF5;border-radius:8px;color:#059669;font-size:14px;font-weight:500}
+    .file-info.show{display:flex}
+    .file-info svg{width:20px;height:20px;flex-shrink:0}
+    .textarea-wrapper label{display:block;font-size:14px;font-weight:500;color:var(--cf-gray-700);margin-bottom:8px}
+    textarea{width:100%;min-height:320px;padding:16px;font-family:'SF Mono',Monaco,monospace;font-size:13px;line-height:1.6;border:1px solid var(--cf-gray-300);border-radius:8px;background:var(--cf-gray-50);color:var(--cf-gray-800);resize:vertical;transition:all 0.2s ease}
+    textarea:focus{outline:none;border-color:var(--cf-orange);box-shadow:0 0 0 3px rgba(246,130,31,0.15);background:#fff}
+    textarea::placeholder{color:var(--cf-gray-400)}
+    .textarea-hint{font-size:13px;color:var(--cf-gray-500);margin-top:8px}
+    .convert-section{text-align:center;margin:32px 0}
+    .results-section{display:none}
+    .results-section.show{display:block}
+    .results-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+    .results-header h2{font-size:20px;font-weight:600;color:var(--cf-gray-800)}
+    .results-count{background:var(--cf-orange);color:#fff;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
+    .rule-card{background:#fff;border:1px solid var(--cf-gray-200);border-radius:12px;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+    .rule-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--cf-gray-50);border-bottom:1px solid var(--cf-gray-200)}
+    .rule-header-left{display:flex;align-items:center;gap:12px}
+    .rule-type{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+    .rule-type.redirect{background:#DBEAFE;color:#1E40AF}
+    .rule-type.rewrite{background:#E9D5FF;color:#7C3AED}
+    .rule-type.request-header{background:#D1FAE5;color:#047857}
+    .rule-type.response-header{background:#CCFBF1;color:#0D9488}
+    .rule-type.origin{background:#FEF3C7;color:#B45309}
+    .rule-type.snippet{background:#FEE2E2;color:#DC2626}
+    .rule-name{font-size:15px;font-weight:600;color:var(--cf-gray-800)}
+    .rule-number{font-size:13px;color:var(--cf-gray-500)}
+    .rule-body{padding:24px}
+    .rule-section{margin-bottom:24px}
+    .rule-section:last-child{margin-bottom:0}
+    .rule-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .rule-section-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--cf-gray-600);text-transform:uppercase;letter-spacing:0.5px}
+    .rule-section-title svg{width:16px;height:16px}
+    .copy-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--cf-gray-600);background:var(--cf-gray-100);border:1px solid var(--cf-gray-200);border-radius:6px;cursor:pointer;transition:all 0.15s ease}
+    .copy-btn:hover{background:var(--cf-gray-200);color:var(--cf-gray-800)}
+    .copy-btn.copied{background:#D1FAE5;color:#047857;border-color:#A7F3D0}
+    pre{background:var(--cf-gray-900);border-radius:8px;padding:16px;overflow-x:auto;margin:0}
+    pre code{font-family:'SF Mono',Monaco,monospace;font-size:13px;line-height:1.6;color:#E5E7EB}
+    .steps-list{background:var(--cf-gray-50);border:1px solid var(--cf-gray-200);border-radius:8px;padding:16px 16px 16px 20px}
+    .steps-list ol{margin:0;padding-left:20px}
+    .steps-list li{padding:6px 0;font-size:14px;color:var(--cf-gray-700)}
+    .steps-list li strong{color:var(--cf-gray-800)}
+    .steps-list li code{background:#fff;padding:2px 6px;border-radius:4px;font-size:12px;border:1px solid var(--cf-gray-200);color:var(--cf-orange-dark)}
+    .note{display:flex;gap:12px;padding:16px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;font-size:14px;color:#1E40AF}
+    .note svg{width:20px;height:20px;flex-shrink:0;color:#3B82F6}
+    .warning{display:flex;gap:12px;padding:16px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:14px;color:#B45309}
+    .features{margin-top:48px}
+    .features h3{font-size:18px;font-weight:600;color:var(--cf-gray-800);margin-bottom:24px}
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    .feature-card{padding:20px;background:#fff;border:1px solid var(--cf-gray-200);border-radius:10px;transition:all 0.2s ease}
+    .feature-card:hover{border-color:var(--cf-orange);box-shadow:0 4px 12px rgba(246,130,31,0.1)}
+    .feature-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:20px}
+    .feature-icon.redirect{background:#DBEAFE}
+    .feature-icon.rewrite{background:#E9D5FF}
+    .feature-icon.request{background:#D1FAE5}
+    .feature-icon.response{background:#CCFBF1}
+    .feature-icon.origin{background:#FEF3C7}
+    .feature-icon.snippet{background:#FEE2E2}
+    .feature-card h4{font-size:14px;font-weight:600;color:var(--cf-gray-800);margin-bottom:4px}
+    .feature-card p{font-size:13px;color:var(--cf-gray-500)}
+    .footer{text-align:center;padding:32px 0;border-top:1px solid var(--cf-gray-200);margin-top:48px}
+    .footer p{font-size:13px;color:var(--cf-gray-500);margin-bottom:8px}
+    .footer a{color:var(--cf-orange);text-decoration:none;font-weight:500}
+    .footer a:hover{text-decoration:underline}
+    .hidden{display:none!important}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .animate-spin{animation:spin 1s linear infinite}
   </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <header class="text-center mb-10">
-      <div class="flex items-center justify-center gap-4 mb-4">
-        <svg class="w-12 h-12 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="logo-icon">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#F6821F"/>
+              <stop offset="100%" style="stop-color:#FBAD41"/>
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="52" height="52" rx="12" fill="#1F2937" stroke="url(#logoGrad)" stroke-width="2"/>
+          <path d="M16 28L24 20L32 28L40 20" stroke="url(#logoGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M16 36L24 28L32 36L40 28" stroke="#F6821F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5"/>
+          <circle cx="40" cy="20" r="4" fill="#F6821F"/>
+          <circle cx="16" cy="28" r="3" fill="#FBAD41"/>
         </svg>
-        <h1 class="text-4xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-          F5 iRule to Cloudflare Rules Converter
-        </h1>
       </div>
-      <p class="text-gray-400 text-lg">Convert your F5 BIG-IP iRules to Cloudflare Rules with GUI instructions and API calls</p>
-    </header>
-
-    <div class="mb-8">
-      <div class="flex border-b border-gray-700">
-        <button id="uploadTab" onclick="switchTab('upload')" class="px-6 py-3 font-medium rounded-t-lg tab-active transition-colors">
-          📁 Upload File
-        </button>
-        <button id="manualTab" onclick="switchTab('manual')" class="px-6 py-3 font-medium rounded-t-lg tab-inactive transition-colors ml-2">
-          ✏️ Manual Entry
-        </button>
-      </div>
-
-      <div id="uploadSection" class="bg-gray-800 rounded-b-lg rounded-tr-lg p-6">
-        <div class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-orange-500 transition-colors"
-             ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
-          <input type="file" id="fileInput" accept=".txt,.tcl" class="hidden" onchange="handleFileSelect(event)">
-          <svg class="w-16 h-16 mx-auto text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-          </svg>
-          <p class="text-gray-400 mb-2">Drag and drop your F5 iRules export file here</p>
-          <p class="text-gray-500 text-sm mb-4">or</p>
-          <button onclick="document.getElementById('fileInput').click()" 
-                  class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-            Select File
-          </button>
-          <p class="text-gray-500 text-sm mt-4">Supports .txt and .tcl files from F5 "Export iRules" command</p>
+      <h1>F5 iRule to Cloudflare Rules Converter</h1>
+      <p>Migrate your F5 BIG-IP iRules to Cloudflare Rules with step-by-step dashboard instructions and ready-to-use API calls</p>
+      <span class="badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Powered by Cloudflare Workers</span>
+    </div>
+  </header>
+  <main class="main">
+    <div class="container">
+      <div class="card">
+        <div class="tabs">
+          <button id="uploadTab" class="tab active" onclick="switchTab('upload')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Upload File</button>
+          <button id="manualTab" class="tab" onclick="switchTab('manual')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Manual Entry</button>
         </div>
-        <div id="fileInfo" class="mt-4 hidden">
-          <div class="flex items-center gap-2 text-green-400">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span id="fileName"></span>
+        <div id="uploadSection" class="tab-content active">
+          <div class="upload-zone" id="dropZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".txt,.tcl" class="hidden" onchange="handleFileSelect(event)">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            <h3>Drop your F5 iRules export file here</h3>
+            <p>or click to browse your files</p>
+            <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Select File</button>
+            <p style="margin-top:16px;font-size:12px">Supports .txt and .tcl files</p>
+          </div>
+          <div id="fileInfo" class="file-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span id="fileName"></span></div>
+        </div>
+        <div id="manualSection" class="tab-content">
+          <div class="textarea-wrapper">
+            <label for="manualInput">Paste your iRule(s) below</label>
+            <textarea id="manualInput" placeholder="when HTTP_REQUEST {&#10;    if { [HTTP::uri] starts_with &quot;/api&quot; } {&#10;        HTTP::redirect &quot;https://api.example.com[HTTP::uri]&quot;&#10;    }&#10;}"></textarea>
+            <p class="textarea-hint">You can paste multiple iRules - each will be parsed separately</p>
           </div>
         </div>
       </div>
-
-      <div id="manualSection" class="bg-gray-800 rounded-b-lg rounded-tr-lg p-6 hidden">
-        <label class="block text-gray-300 font-medium mb-2">Enter iRule(s) below:</label>
-        <textarea id="manualInput" rows="15" 
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 text-gray-100 font-mono text-sm focus:border-orange-500 focus:outline-none"
-                  placeholder="when HTTP_REQUEST {
-    if { [HTTP::uri] starts_with &quot;/api&quot; } {
-        HTTP::redirect &quot;https://api.example.com[HTTP::uri]&quot;
-    }
-    if { [HTTP::header exists &quot;X-Custom-Header&quot;] } {
-        HTTP::header remove &quot;X-Custom-Header&quot;
-    }
-}
-
-when HTTP_RESPONSE {
-    HTTP::header insert &quot;X-Frame-Options&quot; &quot;SAMEORIGIN&quot;
-}"></textarea>
-        <p class="text-gray-500 text-sm mt-2">You can paste multiple iRules - each will be parsed separately</p>
+      <div class="convert-section">
+        <button onclick="convertRules()" class="btn btn-primary btn-lg" id="convertBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Convert to Cloudflare Rules</button>
       </div>
-    </div>
-
-    <div class="text-center mb-8">
-      <button onclick="convertRules()" 
-              class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-8 py-3 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg">
-        🔄 Convert to Cloudflare Rules
-      </button>
-    </div>
-
-    <div id="resultsSection" class="hidden">
-      <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        Conversion Results
-      </h2>
-      <div id="resultsContainer" class="space-y-6"></div>
-    </div>
-
-    <div class="mt-12 bg-gray-800 rounded-lg p-6">
-      <h3 class="text-xl font-bold mb-4 text-orange-500">Supported iRule Conversions</h3>
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">🔀 Redirects</h4>
-          <p class="text-gray-400 text-sm">HTTP::redirect → Single Redirects</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">📝 URL Rewrites</h4>
-          <p class="text-gray-400 text-sm">HTTP::uri → Transform Rules (URL Rewrite)</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">📨 Request Headers</h4>
-          <p class="text-gray-400 text-sm">HTTP::header insert/remove → Request Header Transform</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">📩 Response Headers</h4>
-          <p class="text-gray-400 text-sm">HTTP_RESPONSE headers → Response Header Transform</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">🌐 Origin Routing</h4>
-          <p class="text-gray-400 text-sm">pool/node commands → Origin Rules</p>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-          <h4 class="font-semibold text-white mb-2">⚙️ Complex Logic</h4>
-          <p class="text-gray-400 text-sm">Advanced iRules → Cloudflare Snippets</p>
+      <div id="resultsSection" class="results-section">
+        <div class="results-header"><h2>Conversion Results</h2><span id="resultsCount" class="results-count">0 rules</span></div>
+        <div id="resultsContainer"></div>
+      </div>
+      <div class="features">
+        <h3>Supported Conversions</h3>
+        <div class="features-grid">
+          <div class="feature-card"><div class="feature-icon redirect">↗️</div><h4>Redirects</h4><p>HTTP::redirect → Single Redirect Rules</p></div>
+          <div class="feature-card"><div class="feature-icon rewrite">🔄</div><h4>URL Rewrites</h4><p>HTTP::uri → Transform Rules</p></div>
+          <div class="feature-card"><div class="feature-icon request">📤</div><h4>Request Headers</h4><p>HTTP::header → Request Header Transform</p></div>
+          <div class="feature-card"><div class="feature-icon response">📥</div><h4>Response Headers</h4><p>HTTP_RESPONSE → Response Header Transform</p></div>
+          <div class="feature-card"><div class="feature-icon origin">🌐</div><h4>Origin Routing</h4><p>pool/node → Origin Rules</p></div>
+          <div class="feature-card"><div class="feature-icon snippet">⚡</div><h4>Complex Logic</h4><p>Advanced iRules → Cloudflare Snippets</p></div>
         </div>
       </div>
+      <footer class="footer">
+        <p>This tool provides guidance for migrating F5 iRules to Cloudflare. Manual review recommended.</p>
+        <p><a href="https://developers.cloudflare.com/rules/" target="_blank">View Cloudflare Rules Documentation →</a></p>
+      </footer>
     </div>
-
-    <footer class="mt-12 text-center text-gray-500 text-sm">
-      <p>This tool provides guidance for migrating F5 iRules to Cloudflare. Manual review is recommended for complex rules.</p>
-      <p class="mt-2">
-        <a href="https://developers.cloudflare.com/rules/" target="_blank" class="text-orange-500 hover:underline">Cloudflare Rules Documentation</a>
-      </p>
-    </footer>
-  </div>
-
+  </main>
   <script>
-    let uploadedContent = '';
-    
-    function switchTab(tab) {
-      const uploadTab = document.getElementById('uploadTab');
-      const manualTab = document.getElementById('manualTab');
-      const uploadSection = document.getElementById('uploadSection');
-      const manualSection = document.getElementById('manualSection');
-      
-      if (tab === 'upload') {
-        uploadTab.className = 'px-6 py-3 font-medium rounded-t-lg tab-active transition-colors';
-        manualTab.className = 'px-6 py-3 font-medium rounded-t-lg tab-inactive transition-colors ml-2';
-        uploadSection.classList.remove('hidden');
-        manualSection.classList.add('hidden');
-      } else {
-        manualTab.className = 'px-6 py-3 font-medium rounded-t-lg tab-active transition-colors ml-2';
-        uploadTab.className = 'px-6 py-3 font-medium rounded-t-lg tab-inactive transition-colors';
-        manualSection.classList.remove('hidden');
-        uploadSection.classList.add('hidden');
-      }
-    }
-    
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.currentTarget.classList.add('border-orange-500');
-    }
-    
-    function handleDrop(e) {
-      e.preventDefault();
-      e.currentTarget.classList.remove('border-orange-500');
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    }
-    
-    function handleFileSelect(e) {
-      const file = e.target.files[0];
-      if (file) processFile(file);
-    }
-    
-    function processFile(file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        uploadedContent = e.target.result;
-        document.getElementById('fileName').textContent = file.name + ' (' + formatBytes(file.size) + ')';
-        document.getElementById('fileInfo').classList.remove('hidden');
-      };
-      reader.readAsText(file);
-    }
-    
-    function formatBytes(bytes) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    async function convertRules() {
-      const activeTab = document.getElementById('uploadTab').classList.contains('tab-active') ? 'upload' : 'manual';
-      const content = activeTab === 'upload' ? uploadedContent : document.getElementById('manualInput').value;
-      
-      if (!content.trim()) {
-        alert('Please provide iRule content to convert');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/convert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ irules: content })
-        });
-        
-        const results = await response.json();
-        displayResults(results);
-      } catch (error) {
-        alert('Error converting rules: ' + error.message);
-      }
-    }
-    
-    function displayResults(results) {
-      const container = document.getElementById('resultsContainer');
-      const section = document.getElementById('resultsSection');
-      container.innerHTML = '';
-      
-      if (results.length === 0) {
-        container.innerHTML = '<div class="bg-yellow-900/50 border border-yellow-600 rounded-lg p-4 text-yellow-200">No convertible iRule patterns were detected. The iRules may require manual migration using Cloudflare Snippets.</div>';
-        section.classList.remove('hidden');
-        return;
-      }
-      
-      results.forEach((result, index) => {
-        const ruleHtml = createRuleCard(result, index);
-        container.innerHTML += ruleHtml;
-      });
-      
-      section.classList.remove('hidden');
-      hljs.highlightAll();
-      section.scrollIntoView({ behavior: 'smooth' });
-    }
-    
-    function createRuleCard(result, index) {
-      const typeColors = {
-        'Single Redirect': 'bg-blue-500',
-        'URL Rewrite': 'bg-purple-500',
-        'Request Header Transform': 'bg-green-500',
-        'Response Header Transform': 'bg-teal-500',
-        'Origin Rule': 'bg-amber-500',
-        'Snippet': 'bg-red-500'
-      };
-      
-      const typeColor = typeColors[result.type] || 'bg-gray-500';
-      
-      let html = '<div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">';
-      html += '<div class="bg-gray-700 px-6 py-4 flex items-center justify-between">';
-      html += '<div class="flex items-center gap-3">';
-      html += '<span class="' + typeColor + ' text-white text-xs font-bold px-3 py-1 rounded-full">' + result.type + '</span>';
-      html += '<h3 class="font-semibold text-lg">' + result.name + '</h3>';
-      html += '</div>';
-      html += '<span class="text-gray-400 text-sm">Rule #' + (index + 1) + '</span>';
-      html += '</div>';
-      
-      html += '<div class="p-6 space-y-6">';
-      
-      html += '<div>';
-      html += '<h4 class="text-gray-400 font-medium mb-2 flex items-center gap-2">';
-      html += '<span class="text-orange-500">▸</span> Original iRule Pattern</h4>';
-      html += '<pre class="bg-gray-900 rounded-lg p-4 overflow-x-auto"><code class="language-tcl">' + escapeHtml(result.original) + '</code></pre>';
-      html += '</div>';
-      
-      html += '<div>';
-      html += '<h4 class="text-gray-400 font-medium mb-2 flex items-center gap-2">';
-      html += '<span class="text-blue-500">▸</span> Cloudflare Dashboard Configuration</h4>';
-      html += '<div class="bg-gray-900 rounded-lg p-4">';
-      html += '<ol class="list-decimal list-inside space-y-2 text-gray-300">';
-      result.guiSteps.forEach(function(step) {
-        html += '<li>' + step + '</li>';
-      });
-      html += '</ol></div></div>';
-      
-      html += '<div>';
-      html += '<h4 class="text-gray-400 font-medium mb-2 flex items-center gap-2">';
-      html += '<span class="text-green-500">▸</span> API Call';
-      html += '<button onclick="copyToClipboard(\\'api-' + index + '\\')" class="copy-btn ml-auto bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded hover:bg-gray-600 transition-colors">📋 Copy</button>';
-      html += '</h4>';
-      html += '<pre id="api-' + index + '" class="bg-gray-900 rounded-lg p-4 overflow-x-auto"><code class="language-bash">' + escapeHtml(result.apiCall) + '</code></pre>';
-      html += '</div>';
-      
-      if (result.expression) {
-        html += '<div>';
-        html += '<h4 class="text-gray-400 font-medium mb-2 flex items-center gap-2">';
-        html += '<span class="text-purple-500">▸</span> Cloudflare Expression';
-        html += '<button onclick="copyToClipboard(\\'expr-' + index + '\\')" class="copy-btn ml-auto bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded hover:bg-gray-600 transition-colors">📋 Copy</button>';
-        html += '</h4>';
-        html += '<pre id="expr-' + index + '" class="bg-gray-900 rounded-lg p-4 overflow-x-auto"><code class="language-javascript">' + escapeHtml(result.expression) + '</code></pre>';
-        html += '</div>';
-      }
-      
-      if (result.notes) {
-        html += '<div class="bg-blue-900/30 border border-blue-700 rounded-lg p-4">';
-        html += '<p class="text-blue-200 text-sm">💡 <strong>Note:</strong> ' + result.notes + '</p>';
-        html += '</div>';
-      }
-      
-      html += '</div></div>';
-      return html;
-    }
-    
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
-    function copyToClipboard(elementId) {
-      const element = document.getElementById(elementId);
-      const text = element.textContent;
-      navigator.clipboard.writeText(text).then(function() {
-        const btn = element.parentElement.querySelector('.copy-btn');
-        if (btn) {
-          const originalText = btn.textContent;
-          btn.textContent = '✓ Copied!';
-          setTimeout(function() { btn.textContent = originalText; }, 2000);
-        }
-      });
-    }
+    let uploadedContent='';
+    function switchTab(tab){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.getElementById(tab+'Tab').classList.add('active');document.getElementById(tab+'Section').classList.add('active')}
+    function handleDragOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('dragover')}
+    function handleDragLeave(e){e.preventDefault();document.getElementById('dropZone').classList.remove('dragover')}
+    function handleDrop(e){e.preventDefault();e.stopPropagation();document.getElementById('dropZone').classList.remove('dragover');const file=e.dataTransfer.files[0];if(file)processFile(file)}
+    function handleFileSelect(e){const file=e.target.files[0];if(file)processFile(file)}
+    function processFile(file){const reader=new FileReader();reader.onload=function(e){uploadedContent=e.target.result;document.getElementById('fileName').textContent=file.name+' ('+formatBytes(file.size)+')';document.getElementById('fileInfo').classList.add('show')};reader.readAsText(file)}
+    function formatBytes(bytes){if(bytes===0)return'0 Bytes';const k=1024;const sizes=['Bytes','KB','MB'];const i=Math.floor(Math.log(bytes)/Math.log(k));return parseFloat((bytes/Math.pow(k,i)).toFixed(2))+' '+sizes[i]}
+    async function convertRules(){const btn=document.getElementById('convertBtn');const activeTab=document.getElementById('uploadTab').classList.contains('active')?'upload':'manual';const content=activeTab==='upload'?uploadedContent:document.getElementById('manualInput').value;if(!content.trim()){alert('Please provide iRule content');return}btn.disabled=true;btn.innerHTML='<svg class="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M12 2a10 10 0 0110 10" opacity="0.75"/></svg> Converting...';try{const response=await fetch('/api/convert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({irules:content})});const results=await response.json();displayResults(results)}catch(error){alert('Error: '+error.message)}finally{btn.disabled=false;btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Convert to Cloudflare Rules'}}
+    function displayResults(results){const container=document.getElementById('resultsContainer');const section=document.getElementById('resultsSection');const countEl=document.getElementById('resultsCount');container.innerHTML='';if(results.length===0){container.innerHTML='<div class="warning"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span>No convertible patterns detected. Consider Cloudflare Snippets.</span></div>';countEl.textContent='0 rules';section.classList.add('show');return}countEl.textContent=results.length+' rule'+(results.length===1?'':'s');results.forEach((result,index)=>container.innerHTML+=createRuleCard(result,index));section.classList.add('show');hljs.highlightAll();section.scrollIntoView({behavior:'smooth'})}
+    function createRuleCard(result,index){const typeClasses={'Single Redirect':'redirect','URL Rewrite':'rewrite','Request Header Transform':'request-header','Response Header Transform':'response-header','Origin Rule':'origin','Snippet':'snippet'};const typeClass=typeClasses[result.type]||'';let html='<div class="rule-card"><div class="rule-header"><div class="rule-header-left"><span class="rule-type '+typeClass+'">'+result.type+'</span><span class="rule-name">'+escapeHtml(result.name)+'</span></div><span class="rule-number">Rule #'+(index+1)+'</span></div><div class="rule-body">';html+='<div class="rule-section"><div class="rule-section-header"><span class="rule-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="#F6821F" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Original iRule</span></div><pre><code class="language-tcl">'+escapeHtml(result.original)+'</code></pre></div>';html+='<div class="rule-section"><div class="rule-section-header"><span class="rule-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Dashboard Configuration</span></div><div class="steps-list"><ol>';result.guiSteps.forEach(function(step){html+='<li>'+step+'</li>'});html+='</ol></div></div>';html+='<div class="rule-section"><div class="rule-section-header"><span class="rule-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>API Call</span><button class="copy-btn" onclick="copyCode(this,\\'api-'+index+'\\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button></div><pre id="api-'+index+'"><code class="language-bash">'+escapeHtml(result.apiCall)+'</code></pre></div>';if(result.expression){html+='<div class="rule-section"><div class="rule-section-header"><span class="rule-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/></svg>Expression</span><button class="copy-btn" onclick="copyCode(this,\\'expr-'+index+'\\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button></div><pre id="expr-'+index+'"><code class="language-javascript">'+escapeHtml(result.expression)+'</code></pre></div>'}if(result.notes){html+='<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span><strong>Note:</strong> '+result.notes+'</span></div>'}html+='</div></div>';return html}
+    function escapeHtml(text){const div=document.createElement('div');div.textContent=text;return div.innerHTML}
+    function copyCode(btn,elementId){const element=document.getElementById(elementId);const text=element.textContent;navigator.clipboard.writeText(text).then(function(){btn.classList.add('copied');btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Copied!';setTimeout(function(){btn.classList.remove('copied');btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy'},2000)})}
   </script>
 </body>
 </html>`;
 
+// Parse iRules and detect patterns
 function parseIRules(content) {
-  const rules = [];
-  const iRuleBlocks = content.split(/(?=when\s+(?:HTTP_REQUEST|HTTP_RESPONSE|CLIENT_ACCEPTED|SERVER_CONNECTED))/gi);
+  const results = [];
+  const blocks = extractEventBlocks(content);
   
-  for (const block of iRuleBlocks) {
-    if (!block.trim()) continue;
-    
-    if (/when\s+HTTP_REQUEST/i.test(block)) {
-      rules.push(...parseHttpRequestBlock(block));
-    }
-    
-    if (/when\s+HTTP_RESPONSE/i.test(block)) {
-      rules.push(...parseHttpResponseBlock(block));
-    }
-    
-    if (/(?:pool|node)\s+/i.test(block) && !rules.some(r => r.type === 'Origin Rule')) {
-      rules.push(...parsePoolNodeBlock(block));
-    }
+  for (const block of blocks) {
+    const blockResults = analyzeBlock(block);
+    results.push(...blockResults);
   }
   
-  if (rules.length === 0 && content.trim()) {
-    rules.push(createSnippetSuggestion(content));
-  }
-  
-  return rules;
+  return results;
 }
 
-function parseHttpRequestBlock(block) {
-  const rules = [];
-  
-  const redirectRegex = /if\s*\{\s*\[HTTP::(?:uri|host|path)(?:\s+[^\]]+)?\]\s*(starts_with|ends_with|contains|equals?|==|eq)\s*"([^"]+)"\s*\}\s*\{[^}]*HTTP::redirect\s+"([^"]+)"/gi;
+// Extract event blocks (when HTTP_REQUEST, when HTTP_RESPONSE, etc.)
+function extractEventBlocks(content) {
+  const blocks = [];
+  const eventRegex = /when\s+(HTTP_REQUEST|HTTP_RESPONSE|CLIENT_ACCEPTED|LB_SELECTED|SERVER_CONNECTED)\s*\{/gi;
   let match;
-  while ((match = redirectRegex.exec(block)) !== null) {
-    rules.push(createRedirectRule(match[1], match[2], match[3], block));
+  
+  while ((match = eventRegex.exec(content)) !== null) {
+    const eventType = match[1].toUpperCase();
+    const startIdx = match.index;
+    let braceCount = 1;
+    let endIdx = match.index + match[0].length;
+    
+    while (braceCount > 0 && endIdx < content.length) {
+      if (content[endIdx] === '{') braceCount++;
+      if (content[endIdx] === '}') braceCount--;
+      endIdx++;
+    }
+    
+    blocks.push({
+      type: eventType,
+      content: content.substring(startIdx, endIdx),
+      body: content.substring(match.index + match[0].length, endIdx - 1)
+    });
   }
   
+  return blocks;
+}
+
+// Analyze a block and extract rules
+function analyzeBlock(block) {
+  const results = [];
+  
+  // Check for redirects
+  const redirects = extractRedirects(block);
+  results.push(...redirects);
+  
+  // Check for URL rewrites (non-redirect URI modifications)
+  const rewrites = extractRewrites(block);
+  results.push(...rewrites);
+  
+  // Check for header modifications
+  const headers = extractHeaderMods(block);
+  results.push(...headers);
+  
+  // Check for pool/node routing
+  const origins = extractOriginRules(block);
+  results.push(...origins);
+  
+  // Check for complex patterns that need Snippets
+  const snippets = extractComplexPatterns(block);
+  results.push(...snippets);
+  
+  return results;
+}
+
+// Extract redirect rules
+function extractRedirects(block) {
+  const results = [];
+  const redirectRegex = /if\s*\{\s*\[HTTP::(uri|host|path)[^\]]*\]\s*(starts_with|contains|eq|ends_with|matches)\s*"([^"]+)"\s*\}\s*\{\s*HTTP::redirect\s+"([^"]+)"/gi;
+  let match;
+  
+  while ((match = redirectRegex.exec(block.body)) !== null) {
+    const condition = match[1];
+    const operator = match[2];
+    const pattern = match[3];
+    const target = match[4];
+    
+    results.push({
+      type: 'Single Redirect',
+      name: `Redirect ${pattern} → ${target.substring(0, 30)}...`,
+      original: match[0].replace(/\s+/g, ' ').trim(),
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Redirect Rules</strong>',
+        'Click <strong>Create rule</strong>',
+        `Set expression: <code>${buildExpression(condition, operator, pattern)}</code>`,
+        `Set destination URL: <code>${target}</code>`,
+        'Set status code: <strong>301</strong> or <strong>302</strong>',
+        'Click <strong>Deploy</strong>'
+      ],
+      apiCall: generateRedirectAPI(condition, operator, pattern, target),
+      expression: buildExpression(condition, operator, pattern)
+    });
+  }
+  
+  // Also catch simple redirects without conditions
   const simpleRedirectRegex = /HTTP::redirect\s+"([^"]+)"/gi;
-  while ((match = simpleRedirectRegex.exec(block)) !== null) {
-    if (!rules.some(r => r.original.includes(match[0]))) {
-      rules.push(createSimpleRedirectRule(match[1], block));
+  let simpleMatch;
+  const alreadyMatched = results.map(r => r.original);
+  
+  while ((simpleMatch = simpleRedirectRegex.exec(block.body)) !== null) {
+    const fullMatch = simpleMatch[0];
+    if (!alreadyMatched.some(m => m.includes(fullMatch))) {
+      results.push({
+        type: 'Single Redirect',
+        name: `Redirect to ${simpleMatch[1].substring(0, 40)}...`,
+        original: fullMatch,
+        guiSteps: [
+          'Go to <strong>Rules</strong> → <strong>Redirect Rules</strong>',
+          'Click <strong>Create rule</strong>',
+          'Set expression: <code>true</code> (or add specific conditions)',
+          `Set destination URL: <code>${simpleMatch[1]}</code>`,
+          'Click <strong>Deploy</strong>'
+        ],
+        apiCall: generateSimpleRedirectAPI(simpleMatch[1]),
+        expression: 'true'
+      });
     }
   }
   
-  const uriRegex = /if\s*\{[^}]+\}\s*\{[^}]*HTTP::uri\s+"([^"]+)"/gi;
-  while ((match = uriRegex.exec(block)) !== null) {
-    rules.push(createUriRewriteRule(match[0], match[1]));
-  }
-  
-  const headerInsertRegex = /HTTP::header\s+insert\s+"([^"]+)"\s+"([^"]+)"/gi;
-  while ((match = headerInsertRegex.exec(block)) !== null) {
-    rules.push(createRequestHeaderInsertRule(match[1], match[2], block));
-  }
-  
-  const headerRemoveRegex = /HTTP::header\s+remove\s+"([^"]+)"/gi;
-  while ((match = headerRemoveRegex.exec(block)) !== null) {
-    rules.push(createRequestHeaderRemoveRule(match[1], block));
-  }
-  
-  const headerReplaceRegex = /HTTP::header\s+replace\s+"([^"]+)"\s+"([^"]+)"/gi;
-  while ((match = headerReplaceRegex.exec(block)) !== null) {
-    rules.push(createRequestHeaderReplaceRule(match[1], match[2], block));
-  }
-  
-  return rules;
+  return results;
 }
 
-function parseHttpResponseBlock(block) {
-  const rules = [];
-  
-  const headerInsertRegex = /HTTP::header\s+insert\s+"([^"]+)"\s+"([^"]+)"/gi;
+// Extract URL rewrite rules
+function extractRewrites(block) {
+  const results = [];
+  // Match HTTP::uri set without redirect
+  const rewriteRegex = /if\s*\{\s*\[HTTP::(uri|path)[^\]]*\]\s*(starts_with|contains|eq)\s*"([^"]+)"\s*\}\s*\{\s*HTTP::uri\s+"([^"]+)"(?!\s*\n[^}]*HTTP::redirect)/gi;
   let match;
-  while ((match = headerInsertRegex.exec(block)) !== null) {
-    rules.push(createResponseHeaderInsertRule(match[1], match[2], block));
+  
+  while ((match = rewriteRegex.exec(block.body)) !== null) {
+    const condition = match[1];
+    const operator = match[2];
+    const pattern = match[3];
+    const newUri = match[4];
+    
+    results.push({
+      type: 'URL Rewrite',
+      name: `Rewrite ${pattern} → ${newUri}`,
+      original: match[0].replace(/\s+/g, ' ').trim(),
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
+        'Select <strong>Rewrite URL</strong> tab',
+        'Click <strong>Create rule</strong>',
+        `Set expression: <code>${buildExpression(condition, operator, pattern)}</code>`,
+        `Rewrite path to: <code>${newUri}</code>`,
+        'Click <strong>Deploy</strong>'
+      ],
+      apiCall: generateRewriteAPI(condition, operator, pattern, newUri),
+      expression: buildExpression(condition, operator, pattern)
+    });
   }
   
-  const headerRemoveRegex = /HTTP::header\s+remove\s+"([^"]+)"/gi;
-  while ((match = headerRemoveRegex.exec(block)) !== null) {
-    rules.push(createResponseHeaderRemoveRule(match[1], block));
-  }
-  
-  return rules;
+  return results;
 }
 
-function parsePoolNodeBlock(block) {
-  const rules = [];
+// Extract header modification rules
+function extractHeaderMods(block) {
+  const results = [];
+  const isResponse = block.type === 'HTTP_RESPONSE';
+  const ruleType = isResponse ? 'Response Header Transform' : 'Request Header Transform';
   
-  const poolRegex = /if\s*\{\s*\[HTTP::(?:uri|host|path)(?:\s+[^\]]+)?\]\s*(starts_with|ends_with|contains|equals?|==|eq)\s*"([^"]+)"\s*\}\s*\{[^}]*(?:pool|node)\s+(\S+)/gi;
+  // Insert headers
+  const insertRegex = /HTTP::header\s+insert\s+"([^"]+)"\s+"([^"]+)"/gi;
   let match;
-  while ((match = poolRegex.exec(block)) !== null) {
-    rules.push(createOriginRule(match[1], match[2], match[3], block));
+  
+  while ((match = insertRegex.exec(block.body)) !== null) {
+    results.push({
+      type: ruleType,
+      name: `Add header: ${match[1]}`,
+      original: match[0],
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
+        `Select <strong>Modify ${isResponse ? 'Response' : 'Request'} Header</strong> tab`,
+        'Click <strong>Create rule</strong>',
+        'Set expression: <code>true</code> (or add specific conditions)',
+        `Action: <strong>Set static</strong>`,
+        `Header name: <code>${match[1]}</code>`,
+        `Value: <code>${match[2]}</code>`,
+        'Click <strong>Deploy</strong>'
+      ],
+      apiCall: generateHeaderAPI(match[1], match[2], 'set', isResponse),
+      expression: 'true'
+    });
   }
   
-  return rules;
-}
-
-function createRedirectRule(operator, pattern, targetUrl, originalBlock) {
-  const cfExpression = convertConditionToExpression(operator, pattern);
+  // Remove headers
+  const removeRegex = /HTTP::header\s+remove\s+"([^"]+)"/gi;
   
-  return {
-    type: 'Single Redirect',
-    name: 'Redirect ' + pattern + ' requests',
-    original: extractRelevantBlock(originalBlock, pattern),
-    expression: cfExpression,
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Redirect Rules</strong>',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression to: <code>' + cfExpression + '</code>',
-      'Set the URL redirect to: <code>' + targetUrl + '</code>',
-      'Choose the appropriate status code (301 for permanent, 302 for temporary)',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateRedirectApiCall(cfExpression, targetUrl),
-    notes: 'Review the redirect URL to ensure any dynamic components are properly handled. You may need to use dynamic URL redirects for complex patterns.'
-  };
-}
-
-function createSimpleRedirectRule(targetUrl, originalBlock) {
-  return {
-    type: 'Single Redirect',
-    name: 'Redirect all requests to ' + targetUrl.substring(0, 30) + '...',
-    original: 'HTTP::redirect "' + targetUrl + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Redirect Rules</strong>',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression to match all traffic or add specific conditions',
-      'Set the URL redirect to: <code>' + targetUrl + '</code>',
-      'Choose the appropriate status code (301 for permanent, 302 for temporary)',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateRedirectApiCall('true', targetUrl),
-    notes: 'This redirect has no condition in the original iRule. Add an appropriate filter expression to target specific traffic.'
-  };
-}
-
-function createUriRewriteRule(originalBlock, newUri) {
-  return {
-    type: 'URL Rewrite',
-    name: 'Rewrite URI to ' + newUri,
-    original: originalBlock,
-    expression: 'http.request.uri.path eq "/original-path"',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Rewrite URL</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression to match the appropriate requests',
-      'Under <strong>Path</strong>, select "Rewrite to..." and choose Static or Dynamic',
-      'Enter the new path: <code>' + newUri + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateUrlRewriteApiCall(newUri),
-    notes: 'URL Rewrite rules can use static values or dynamic expressions. For complex rewrites, consider using Cloudflare Snippets.'
-  };
-}
-
-function createRequestHeaderInsertRule(headerName, headerValue, originalBlock) {
-  return {
-    type: 'Request Header Transform',
-    name: 'Add request header: ' + headerName,
-    original: 'HTTP::header insert "' + headerName + '" "' + headerValue + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Modify Request Header</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression (or leave as "All incoming requests")',
-      'Under <strong>Then</strong>, click <strong>Set header</strong>',
-      'Header name: <code>' + headerName + '</code>',
-      'Value: <code>' + headerValue + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateRequestHeaderApiCall('set', headerName, headerValue),
-    notes: 'Use "Set" to add or overwrite the header. Use "Add" if you want to append without overwriting existing values.'
-  };
-}
-
-function createRequestHeaderRemoveRule(headerName, originalBlock) {
-  return {
-    type: 'Request Header Transform',
-    name: 'Remove request header: ' + headerName,
-    original: 'HTTP::header remove "' + headerName + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Modify Request Header</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression (or leave as "All incoming requests")',
-      'Under <strong>Then</strong>, click <strong>Remove header</strong>',
-      'Header name: <code>' + headerName + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateRequestHeaderApiCall('remove', headerName),
-    notes: 'This will remove the specified header from all matching requests.'
-  };
-}
-
-function createRequestHeaderReplaceRule(headerName, headerValue, originalBlock) {
-  return {
-    type: 'Request Header Transform',
-    name: 'Replace request header: ' + headerName,
-    original: 'HTTP::header replace "' + headerName + '" "' + headerValue + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Modify Request Header</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression (or leave as "All incoming requests")',
-      'Under <strong>Then</strong>, click <strong>Set header</strong>',
-      'Header name: <code>' + headerName + '</code>',
-      'Value: <code>' + headerValue + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateRequestHeaderApiCall('set', headerName, headerValue),
-    notes: 'In Cloudflare, "Set" will replace any existing header value, functioning the same as F5\'s "replace" command.'
-  };
-}
-
-function createResponseHeaderInsertRule(headerName, headerValue, originalBlock) {
-  return {
-    type: 'Response Header Transform',
-    name: 'Add response header: ' + headerName,
-    original: 'HTTP::header insert "' + headerName + '" "' + headerValue + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Modify Response Header</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression (or leave as "All incoming requests")',
-      'Under <strong>Then</strong>, click <strong>Set header</strong>',
-      'Header name: <code>' + headerName + '</code>',
-      'Value: <code>' + headerValue + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateResponseHeaderApiCall('set', headerName, headerValue),
-    notes: 'Response headers are added to responses sent back to the client.'
-  };
-}
-
-function createResponseHeaderRemoveRule(headerName, originalBlock) {
-  return {
-    type: 'Response Header Transform',
-    name: 'Remove response header: ' + headerName,
-    original: 'HTTP::header remove "' + headerName + '"',
-    expression: 'true',
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
-      'Select <strong>Modify Response Header</strong> tab',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression (or leave as "All incoming requests")',
-      'Under <strong>Then</strong>, click <strong>Remove header</strong>',
-      'Header name: <code>' + headerName + '</code>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateResponseHeaderApiCall('remove', headerName),
-    notes: 'This removes the specified header from responses.'
-  };
-}
-
-function createOriginRule(operator, pattern, poolOrNode, originalBlock) {
-  const cfExpression = convertConditionToExpression(operator, pattern);
+  while ((match = removeRegex.exec(block.body)) !== null) {
+    results.push({
+      type: ruleType,
+      name: `Remove header: ${match[1]}`,
+      original: match[0],
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
+        `Select <strong>Modify ${isResponse ? 'Response' : 'Request'} Header</strong> tab`,
+        'Click <strong>Create rule</strong>',
+        'Set expression: <code>true</code>',
+        `Action: <strong>Remove</strong>`,
+        `Header name: <code>${match[1]}</code>`,
+        'Click <strong>Deploy</strong>'
+      ],
+      apiCall: generateHeaderAPI(match[1], null, 'remove', isResponse),
+      expression: 'true'
+    });
+  }
   
-  return {
-    type: 'Origin Rule',
-    name: 'Route ' + pattern + ' to ' + poolOrNode,
-    original: extractRelevantBlock(originalBlock, pattern),
-    expression: cfExpression,
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Origin Rules</strong>',
-      'Click <strong>Create rule</strong>',
-      'Enter a descriptive rule name',
-      'Set the filter expression to: <code>' + cfExpression + '</code>',
-      'Under <strong>Destination overrides</strong>:',
-      '  - Set <strong>Host Header</strong> to your origin hostname',
-      '  - Set <strong>DNS override</strong> to resolve to your origin (replaces F5 pool: ' + poolOrNode + ')',
-      'Optionally set the <strong>Destination Port</strong>',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateOriginRuleApiCall(cfExpression, poolOrNode),
-    notes: 'The F5 pool/node "' + poolOrNode + '" needs to be replaced with your actual origin hostname. Origin Rules allow you to route traffic to different backends based on conditions.'
-  };
+  // Replace headers
+  const replaceRegex = /HTTP::header\s+replace\s+"([^"]+)"\s+"([^"]+)"/gi;
+  
+  while ((match = replaceRegex.exec(block.body)) !== null) {
+    results.push({
+      type: ruleType,
+      name: `Replace header: ${match[1]}`,
+      original: match[0],
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Transform Rules</strong>',
+        `Select <strong>Modify ${isResponse ? 'Response' : 'Request'} Header</strong> tab`,
+        'Click <strong>Create rule</strong>',
+        'Set expression: <code>true</code>',
+        `Action: <strong>Set static</strong>`,
+        `Header name: <code>${match[1]}</code>`,
+        `Value: <code>${match[2]}</code>`,
+        'Click <strong>Deploy</strong>'
+      ],
+      apiCall: generateHeaderAPI(match[1], match[2], 'set', isResponse),
+      expression: 'true'
+    });
+  }
+  
+  return results;
 }
 
-function createSnippetSuggestion(content) {
-  const lines = content.trim().split('\n').slice(0, 15);
-  const truncated = lines.join('\n') + (content.split('\n').length > 15 ? '\n...' : '');
+// Extract origin/pool rules
+function extractOriginRules(block) {
+  const results = [];
   
-  return {
-    type: 'Snippet',
-    name: 'Complex iRule - Use Cloudflare Snippet',
-    original: truncated,
-    expression: null,
-    guiSteps: [
-      'Navigate to your zone in the Cloudflare dashboard',
-      'Go to <strong>Rules</strong> → <strong>Snippets</strong>',
-      'Click <strong>Create snippet</strong>',
-      'Enter a descriptive snippet name',
-      'Write JavaScript code to implement the iRule logic',
-      'Set the filter expression to target specific traffic',
-      'Test the snippet using preview mode',
-      'Click <strong>Deploy</strong>'
-    ],
-    apiCall: generateSnippetApiCall(),
-    notes: 'This iRule contains complex logic that cannot be directly converted to declarative Cloudflare Rules. Use Cloudflare Snippets to implement custom JavaScript logic. Snippets provide similar flexibility to iRules for request/response manipulation.'
-  };
+  // Pool routing
+  const poolRegex = /if\s*\{\s*\[HTTP::(uri|host|path)[^\]]*\]\s*(starts_with|contains|eq)\s*"([^"]+)"\s*\}\s*\{\s*pool\s+(\S+)/gi;
+  let match;
+  
+  while ((match = poolRegex.exec(block.body)) !== null) {
+    const condition = match[1];
+    const operator = match[2];
+    const pattern = match[3];
+    const poolName = match[4];
+    
+    results.push({
+      type: 'Origin Rule',
+      name: `Route ${pattern} → ${poolName}`,
+      original: match[0].replace(/\s+/g, ' ').trim(),
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Origin Rules</strong>',
+        'Click <strong>Create rule</strong>',
+        `Set expression: <code>${buildExpression(condition, operator, pattern)}</code>`,
+        `Set <strong>Host Header</strong> to your origin hostname`,
+        'Optionally set <strong>DNS record</strong> override',
+        'Click <strong>Deploy</strong>',
+        `<em>Note: Pool "${poolName}" needs to be replaced with actual origin hostname</em>`
+      ],
+      apiCall: generateOriginAPI(condition, operator, pattern, poolName),
+      expression: buildExpression(condition, operator, pattern)
+    });
+  }
+  
+  // Node routing
+  const nodeRegex = /if\s*\{\s*\[HTTP::(uri|host|path)[^\]]*\]\s*(starts_with|contains|eq)\s*"([^"]+)"\s*\}\s*\{\s*node\s+(\S+)\s+(\d+)/gi;
+  
+  while ((match = nodeRegex.exec(block.body)) !== null) {
+    const condition = match[1];
+    const operator = match[2];
+    const pattern = match[3];
+    const nodeIP = match[4];
+    const nodePort = match[5];
+    
+    results.push({
+      type: 'Origin Rule',
+      name: `Route ${pattern} → ${nodeIP}:${nodePort}`,
+      original: match[0].replace(/\s+/g, ' ').trim(),
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Origin Rules</strong>',
+        'Click <strong>Create rule</strong>',
+        `Set expression: <code>${buildExpression(condition, operator, pattern)}</code>`,
+        `Override <strong>Destination Port</strong>: <code>${nodePort}</code>`,
+        'Set DNS override to route to your origin',
+        'Click <strong>Deploy</strong>',
+        `<em>Note: Direct IP routing (${nodeIP}) requires DNS record configuration</em>`
+      ],
+      apiCall: generateOriginAPI(condition, operator, pattern, `${nodeIP}:${nodePort}`),
+      expression: buildExpression(condition, operator, pattern)
+    });
+  }
+  
+  return results;
 }
 
-function convertConditionToExpression(operator, pattern) {
-  const normalizedOp = operator.toLowerCase();
+// Extract complex patterns that need Snippets
+function extractComplexPatterns(block) {
+  const results = [];
+  const complexPatterns = [
+    { regex: /set\s+\w+\s+\[/, name: 'Variable assignment' },
+    { regex: /HTTP::respond\s+\d+/, name: 'Custom HTTP response' },
+    { regex: /HTTP::cookie\s+(exists|value)/, name: 'Cookie manipulation' },
+    { regex: /string\s+(range|length|map)/, name: 'String manipulation' },
+    { regex: /persist\s+/, name: 'Session persistence' },
+    { regex: /TCP::collect/, name: 'TCP-level handling' },
+    { regex: /log\s+local/, name: 'Logging' },
+    { regex: /\$\w+/, name: 'Variable usage' }
+  ];
   
-  switch(normalizedOp) {
+  const foundPatterns = [];
+  
+  for (const pattern of complexPatterns) {
+    if (pattern.regex.test(block.body)) {
+      foundPatterns.push(pattern.name);
+    }
+  }
+  
+  if (foundPatterns.length > 0 && block.type !== 'HTTP_REQUEST' && block.type !== 'HTTP_RESPONSE') {
+    results.push({
+      type: 'Snippet',
+      name: `Complex logic: ${foundPatterns.slice(0, 2).join(', ')}${foundPatterns.length > 2 ? '...' : ''}`,
+      original: block.content.substring(0, 200) + (block.content.length > 200 ? '...' : ''),
+      guiSteps: [
+        'Go to <strong>Rules</strong> → <strong>Snippets</strong>',
+        'Click <strong>Create snippet</strong>',
+        'Write JavaScript code to implement the logic',
+        'Define the trigger route',
+        'Click <strong>Deploy</strong>',
+        '<em>Detected patterns: ' + foundPatterns.join(', ') + '</em>'
+      ],
+      apiCall: generateSnippetAPI(foundPatterns),
+      expression: 'N/A - Snippets use JavaScript'
+    });
+  }
+  
+  return results;
+}
+
+// Build Cloudflare expression
+function buildExpression(condition, operator, pattern) {
+  const field = condition.toLowerCase() === 'host' ? 'http.host' : 'http.request.uri.path';
+  
+  switch (operator.toLowerCase()) {
     case 'starts_with':
-      return 'http.request.uri.path starts_with "' + pattern + '"';
+      return `starts_with(${field}, "${pattern}")`;
     case 'ends_with':
-      return 'http.request.uri.path ends_with "' + pattern + '"';
+      return `ends_with(${field}, "${pattern}")`;
     case 'contains':
-      return 'http.request.uri.path contains "' + pattern + '"';
-    case 'equals':
-    case 'equal':
-    case '==':
+      return `contains(${field}, "${pattern}")`;
     case 'eq':
-      return 'http.request.uri.path eq "' + pattern + '"';
+      return `${field} eq "${pattern}"`;
+    case 'matches':
+      return `${field} matches "${pattern}"`;
     default:
-      return 'http.request.uri.path contains "' + pattern + '"';
+      return `${field} eq "${pattern}"`;
   }
 }
 
-function extractRelevantBlock(block, pattern) {
-  const lines = block.split('\n');
-  const relevantLines = [];
-  let braceCount = 0;
-  let capturing = false;
-  
-  for (const line of lines) {
-    if (line.includes(pattern) || capturing) {
-      capturing = true;
-      relevantLines.push(line);
-      braceCount += (line.match(/\{/g) || []).length;
-      braceCount -= (line.match(/\}/g) || []).length;
-      if (braceCount <= 0 && capturing && relevantLines.length > 1) {
-        break;
-      }
-    }
-  }
-  
-  return relevantLines.join('\n') || block.trim().substring(0, 200);
-}
-
-function generateRedirectApiCall(expression, targetUrl) {
+// Generate API calls
+function generateRedirectAPI(condition, operator, pattern, target) {
+  const expression = buildExpression(condition, operator, pattern);
   return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_dynamic_redirect/entrypoint" \\
   -H "Authorization: Bearer {api_token}" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "${expression.replace(/"/g, '\\"')}",
-        "action": "redirect",
-        "action_parameters": {
-          "from_value": {
-            "status_code": 302,
-            "target_url": {
-              "value": "${targetUrl}"
-            }
+  --data '{
+    "rules": [{
+      "expression": "${expression}",
+      "action": "redirect",
+      "action_parameters": {
+        "from_value": {
+          "status_code": 301,
+          "target_url": {
+            "value": "${target}"
           }
-        },
-        "description": "Migrated from F5 iRule"
+        }
       }
-    ]
+    }]
   }'`;
 }
 
-function generateUrlRewriteApiCall(newUri) {
+function generateSimpleRedirectAPI(target) {
+  return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_dynamic_redirect/entrypoint" \\
+  -H "Authorization: Bearer {api_token}" \\
+  -H "Content-Type: application/json" \\
+  --data '{
+    "rules": [{
+      "expression": "true",
+      "action": "redirect",
+      "action_parameters": {
+        "from_value": {
+          "status_code": 301,
+          "target_url": {
+            "value": "${target}"
+          }
+        }
+      }
+    }]
+  }'`;
+}
+
+function generateRewriteAPI(condition, operator, pattern, newUri) {
+  const expression = buildExpression(condition, operator, pattern);
   return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_transform/entrypoint" \\
   -H "Authorization: Bearer {api_token}" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "true",
-        "action": "rewrite",
-        "action_parameters": {
-          "uri": {
-            "path": {
-              "value": "${newUri}"
-            }
+  --data '{
+    "rules": [{
+      "expression": "${expression}",
+      "action": "rewrite",
+      "action_parameters": {
+        "uri": {
+          "path": {
+            "value": "${newUri}"
           }
-        },
-        "description": "Migrated from F5 iRule"
+        }
       }
-    ]
+    }]
   }'`;
 }
 
-function generateRequestHeaderApiCall(action, headerName, headerValue) {
-  if (action === 'remove') {
-    return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_late_transform/entrypoint" \\
-  -H "Authorization: Bearer {api_token}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "true",
-        "action": "rewrite",
-        "action_parameters": {
-          "headers": {
-            "${headerName}": {
-              "operation": "remove"
-            }
-          }
-        },
-        "description": "Migrated from F5 iRule - Remove header"
-      }
-    ]
-  }'`;
-  }
+function generateHeaderAPI(headerName, headerValue, action, isResponse) {
+  const phase = isResponse ? 'http_response_headers_transform' : 'http_request_late_transform';
+  const actionConfig = action === 'remove' 
+    ? `"remove": true` 
+    : `"value": "${headerValue}"`;
   
-  return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_late_transform/entrypoint" \\
+  return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/${phase}/entrypoint" \\
   -H "Authorization: Bearer {api_token}" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "true",
-        "action": "rewrite",
-        "action_parameters": {
-          "headers": {
-            "${headerName}": {
-              "operation": "set",
-              "value": "${headerValue}"
-            }
+  --data '{
+    "rules": [{
+      "expression": "true",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "${headerName}": {
+            "operation": "${action}",
+            ${actionConfig}
           }
-        },
-        "description": "Migrated from F5 iRule - Set header"
+        }
       }
-    ]
+    }]
   }'`;
 }
 
-function generateResponseHeaderApiCall(action, headerName, headerValue) {
-  if (action === 'remove') {
-    return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_response_headers_transform/entrypoint" \\
-  -H "Authorization: Bearer {api_token}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "true",
-        "action": "rewrite",
-        "action_parameters": {
-          "headers": {
-            "${headerName}": {
-              "operation": "remove"
-            }
-          }
-        },
-        "description": "Migrated from F5 iRule - Remove response header"
-      }
-    ]
-  }'`;
-  }
-  
-  return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_response_headers_transform/entrypoint" \\
-  -H "Authorization: Bearer {api_token}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "true",
-        "action": "rewrite",
-        "action_parameters": {
-          "headers": {
-            "${headerName}": {
-              "operation": "set",
-              "value": "${headerValue}"
-            }
-          }
-        },
-        "description": "Migrated from F5 iRule - Set response header"
-      }
-    ]
-  }'`;
-}
-
-function generateOriginRuleApiCall(expression, poolName) {
+function generateOriginAPI(condition, operator, pattern, origin) {
+  const expression = buildExpression(condition, operator, pattern);
+  const originHost = origin.replace(/:\d+$/, '');
   return `curl -X POST "https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_origin/entrypoint" \\
   -H "Authorization: Bearer {api_token}" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "rules": [
-      {
-        "expression": "${expression.replace(/"/g, '\\"')}",
-        "action": "route",
-        "action_parameters": {
-          "host_header": "origin.example.com",
-          "origin": {
-            "host": "origin.example.com",
-            "port": 443
-          }
-        },
-        "description": "Migrated from F5 iRule - Origin: ${poolName}"
-      }
-    ]
-  }'
-
-# Note: Replace "origin.example.com" with your actual origin hostname
-# The F5 pool "${poolName}" should be mapped to your Cloudflare origin settings`;
-}
-
-function generateSnippetApiCall() {
-  return `# Snippets are managed via the dashboard or Terraform
-# Documentation: https://developers.cloudflare.com/rules/snippets/
-
-# Example Terraform configuration:
-resource "cloudflare_snippet" "example" {
-  zone_id = var.zone_id
-  name    = "migrated-irule"
-  main_file {
-    name    = "main.js"
-    content = <<-EOT
-      export default {
-        async fetch(request) {
-          // Implement your iRule logic here
-          const newHeaders = new Headers(request.headers);
-          newHeaders.set('X-Custom-Header', 'value');
-          
-          return new Request(request.url, {
-            method: request.method,
-            headers: newHeaders,
-            body: request.body
-          });
+  --data '{
+    "rules": [{
+      "expression": "${expression}",
+      "action": "route",
+      "action_parameters": {
+        "host_header": "${originHost}",
+        "origin": {
+          "host": "${originHost}"
         }
-      }
-    EOT
-  }
-}`;
+      },
+      "description": "Migrated from F5 pool/node rule"
+    }]
+  }'`;
 }
 
+function generateSnippetAPI(patterns) {
+  return `// Snippets require custom JavaScript implementation
+// Detected complex patterns: ${patterns.join(', ')}
+
+// Example Snippet structure:
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
+    // Implement your logic here based on the iRule patterns
+    // - Variable handling
+    // - Cookie manipulation  
+    // - Custom responses
+    // - Complex conditionals
+    
+    return fetch(request);
+  }
+};
+
+// Deploy via Wrangler or Cloudflare Dashboard:
+// 1. Go to Rules → Snippets
+// 2. Create new snippet
+// 3. Paste your JavaScript code
+// 4. Configure trigger routes`;
+}
+
+// Worker fetch handler
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    
+    // Handle API endpoint
     if (url.pathname === '/api/convert' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const results = parseIRules(body.irules || '');
+        const irules = body.irules || '';
+        const results = parseIRules(irules);
+        
         return new Response(JSON.stringify(results), {
-          headers: { 'Content-Type': 'application/json' }
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
         });
       } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), {
@@ -900,6 +721,18 @@ export default {
       }
     }
     
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      });
+    }
+    
+    // Serve HTML UI
     return new Response(HTML_TEMPLATE, {
       headers: { 'Content-Type': 'text/html' }
     });
