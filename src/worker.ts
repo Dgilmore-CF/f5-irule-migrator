@@ -23,14 +23,15 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
-  // CSP: allow Google Fonts + Cloudflare's auto-injected Web Analytics beacon
-  // (static.cloudflareinsights.com) and its small inline bootstrap (which the
-  // CF edge injects when Web Analytics or Email Obfuscation is enabled on the
-  // zone). 'unsafe-inline' on script-src is scoped to elements only and is
-  // unavoidable for the CF injected bootstrap — there is no nonce we can sync.
+  // CSP: allow Google Fonts + Cloudflare's auto-injected scripts:
+  //  - static.cloudflareinsights.com (Web Analytics beacon)
+  //  - Inline bootstrap (Email Obfuscation, JS Detections under Bot Fight Mode).
+  //    There is no nonce we can sync with the CF edge injector, so 'unsafe-inline'
+  //    is required.
+  //  - /cdn-cgi/* is same-origin so script-src 'self' already covers it.
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com",
     "script-src-elem 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
@@ -38,6 +39,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    "frame-src 'self'",
     "base-uri 'self'",
     'upgrade-insecure-requests',
   ].join('; '),
@@ -145,6 +147,21 @@ function withSecurityHeaders(res: Response): Response {
   const headers = new Headers(res.headers);
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
     headers.set(k, v);
+  }
+  // Force-disable browser/proxy caching for the app shell. This prevents
+  // users from being stuck on a stale broken build after a deploy. The
+  // Workers Assets layer still caches at the edge, so this only affects
+  // downstream caches.
+  const ct = (headers.get('Content-Type') ?? '').toLowerCase();
+  if (
+    ct.includes('text/html') ||
+    ct.includes('text/javascript') ||
+    ct.includes('application/javascript') ||
+    ct.includes('text/css')
+  ) {
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
   }
   return new Response(res.body, {
     status: res.status,

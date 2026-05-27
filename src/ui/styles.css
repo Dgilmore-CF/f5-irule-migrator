@@ -1253,6 +1253,14 @@ pre.code-block code {
   font-weight: 500;
 }
 
+.modal__build {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+
 @media (prefers-color-scheme: dark) {
   .modal__error {
     color: #fecaca;

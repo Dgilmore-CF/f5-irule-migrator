@@ -6,8 +6,12 @@
  * The disclaimer modal blocks the rest of the UI until accepted.
  */
 
+const BUILD_ID = '20260527d';
 const DISCLAIMER_KEY = 'cf-f5-migrator:disclaimer-accepted:v2';
 const MAX_INPUT_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// eslint-disable-next-line no-console
+console.info('[cf-f5-migrator] app.js loaded · build', BUILD_ID);
 
 const SAMPLE_IRULE = `when HTTP_REQUEST {
     if { [HTTP::uri] starts_with "/old-path" } {
@@ -177,7 +181,7 @@ function initDisclaimer() {
   agree.addEventListener('change', syncLocked);
   agree.addEventListener('input', syncLocked);
 
-  accept.addEventListener('click', () => {
+  function handleAccept() {
     if (!agree.checked) {
       flagMissingCheckbox();
       return;
@@ -188,11 +192,29 @@ function initDisclaimer() {
       /* private mode — ignore */
     }
     closeModal();
-  });
+  }
 
-  decline.addEventListener('click', () => {
+  function handleDecline() {
     document.body.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;text-align:center;padding:24px;color:#475569"><div><h1 style="font-size:28px;margin-bottom:12px;color:#0f172a">Acknowledgment required</h1><p style="max-width:480px">You must accept the disclaimer to use this tool. Close this tab to exit, or refresh to reread the notice.</p></div></div>';
+  }
+
+  accept.addEventListener('click', handleAccept);
+  accept.addEventListener('pointerup', handleAccept);
+  decline.addEventListener('click', handleDecline);
+
+  // Belt-and-suspenders: document-level delegation in case the direct
+  // listeners above are intercepted by anything (browser extension,
+  // CF Bot Fight Mode iframe overlay, etc.). Stops at the modal so we
+  // don't double-fire on normal page clicks.
+  document.addEventListener('click', (e) => {
+    const target = /** @type {HTMLElement | null} */ (e.target);
+    if (!target) return;
+    if (target.closest('#disclaimer-accept')) {
+      handleAccept();
+    } else if (target.closest('#disclaimer-decline')) {
+      handleDecline();
+    }
   });
 
   show.addEventListener('click', openModal);
