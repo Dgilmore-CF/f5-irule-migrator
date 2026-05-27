@@ -162,6 +162,21 @@ svg {
   border: 0;
 }
 
+/* ---------------------------------------------------------------------------
+ * Critical: the HTML [hidden] attribute is supposed to map to display:none in
+ * the UA stylesheet, but any author rule that sets `display` on the same
+ * element wins. We rely on .hidden on the modal, app shell, panels, dropzone
+ * info bars, results wrap, dropdown menu, error message, and toast -- every
+ * one of which has a non-default `display` set elsewhere in this file.
+ *
+ * Without this rule, calling `el.hidden = true` from JS appears to do
+ * nothing, because the author's `display: flex` / `display: block` /
+ * `display: grid` is still in effect.
+ * ------------------------------------------------------------------------- */
+[hidden] {
+  display: none !important;
+}
+
 /* ===========================================================================
  * Layout
  * ======================================================================== */

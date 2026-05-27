@@ -10,7 +10,7 @@
  * Loader entirely.
  */
 
-const BUILD_ID = '20260527e';
+const BUILD_ID = '20260527f';
 const DISCLAIMER_KEY = 'cf-f5-migrator:disclaimer-accepted:v2';
 const MAX_INPUT_BYTES = 5 * 1024 * 1024; // 5 MB
 
