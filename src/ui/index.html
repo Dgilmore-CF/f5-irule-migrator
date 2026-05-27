@@ -118,7 +118,7 @@
         </div>
 
         <footer class="modal__footer">
-          <label class="checkbox">
+          <label class="checkbox" for="disclaimer-agree">
             <input id="disclaimer-agree" type="checkbox" aria-describedby="disclaimer-agree-text" />
             <span id="disclaimer-agree-text">
               I have read this notice. I understand this is an unofficial tool, that I am
@@ -126,11 +126,19 @@
               with no warranty.
             </span>
           </label>
+          <p id="disclaimer-error" class="modal__error" role="alert" aria-live="polite" hidden>
+            Please check the box above to confirm you have read the notice.
+          </p>
           <div class="modal__actions">
             <button id="disclaimer-decline" type="button" class="btn btn--ghost">
               I do not agree
             </button>
-            <button id="disclaimer-accept" type="button" class="btn btn--primary" disabled>
+            <button
+              id="disclaimer-accept"
+              type="button"
+              class="btn btn--primary is-locked"
+              aria-disabled="true"
+            >
               I understand &amp; agree
             </button>
           </div>

@@ -1195,20 +1195,83 @@ pre.code-block code {
 .checkbox {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--color-text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.checkbox:hover {
+  background-color: var(--color-bg-elevated);
+}
+
+.checkbox.is-attention {
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning);
+  animation: shake 0.4s ease;
 }
 
 .checkbox input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
   accent-color: var(--color-accent);
   cursor: pointer;
   flex-shrink: 0;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.modal__error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--color-danger-bg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #991b1b;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .modal__error {
+    color: #fecaca;
+  }
+}
+
+/* Always-clickable but visually "locked" primary button.
+   Real <button disabled> would swallow click events; we want to capture them
+   to show inline guidance. */
+.btn.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn.is-locked:hover {
+  transform: none;
+  background: var(--color-accent);
+  box-shadow: none;
 }
 
 /* ===========================================================================

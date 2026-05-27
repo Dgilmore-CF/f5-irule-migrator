@@ -114,24 +114,102 @@ const SAMPLE_ASM = `<?xml version="1.0" encoding="UTF-8"?>
 function initDisclaimer() {
   const modal = document.getElementById('disclaimer-modal');
   const app = document.getElementById('app');
-  const agree = /** @type {HTMLInputElement|null} */ (document.getElementById('disclaimer-agree'));
+  const agree = /** @type {HTMLInputElement|null} */ (
+    document.getElementById('disclaimer-agree')
+  );
+  const agreeLabel = /** @type {HTMLElement|null} */ (
+    document.querySelector('.checkbox')
+  );
   const accept = /** @type {HTMLButtonElement|null} */ (
     document.getElementById('disclaimer-accept')
   );
   const decline = document.getElementById('disclaimer-decline');
+  const errorEl = /** @type {HTMLElement|null} */ (
+    document.getElementById('disclaimer-error')
+  );
   const show = document.getElementById('show-disclaimer-btn');
 
-  if (!modal || !app || !agree || !accept || !decline || !show) return;
+  if (!modal || !app || !agree || !accept || !decline || !errorEl || !show || !agreeLabel) {
+    return;
+  }
 
   const accepted = localStorage.getItem(DISCLAIMER_KEY) === 'true';
+
+  function setLocked(locked) {
+    if (locked) {
+      accept.classList.add('is-locked');
+      accept.setAttribute('aria-disabled', 'true');
+    } else {
+      accept.classList.remove('is-locked');
+      accept.setAttribute('aria-disabled', 'false');
+      errorEl.hidden = true;
+      agreeLabel.classList.remove('is-attention');
+    }
+  }
 
   function openModal() {
     modal.hidden = false;
     app.hidden = true;
-    if (agree) agree.checked = false;
-    if (accept) accept.disabled = true;
+    agree.checked = false;
+    setLocked(true);
+    errorEl.hidden = true;
+    agreeLabel.classList.remove('is-attention');
     document.body.style.overflow = 'hidden';
   }
+
+  function closeModal() {
+    modal.hidden = true;
+    app.hidden = false;
+    document.body.style.overflow = '';
+  }
+
+  function flagMissingCheckbox() {
+    errorEl.hidden = false;
+    agreeLabel.classList.remove('is-attention');
+    // Force a reflow so the animation restarts even on repeated clicks.
+    void agreeLabel.offsetWidth;
+    agreeLabel.classList.add('is-attention');
+    agree.focus();
+  }
+
+  if (!accepted) {
+    openModal();
+  } else {
+    closeModal();
+  }
+
+  // Sync the locked state on both 'change' (toggle) and 'input' (broader compat).
+  const syncLocked = () => setLocked(!agree.checked);
+  agree.addEventListener('change', syncLocked);
+  agree.addEventListener('input', syncLocked);
+
+  accept.addEventListener('click', () => {
+    if (!agree.checked) {
+      flagMissingCheckbox();
+      return;
+    }
+    try {
+      localStorage.setItem(DISCLAIMER_KEY, 'true');
+    } catch {
+      /* private mode — ignore */
+    }
+    closeModal();
+  });
+
+  decline.addEventListener('click', () => {
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;text-align:center;padding:24px;color:#475569"><div><h1 style="font-size:28px;margin-bottom:12px;color:#0f172a">Acknowledgment required</h1><p style="max-width:480px">You must accept the disclaimer to use this tool. Close this tab to exit, or refresh to reread the notice.</p></div></div>';
+  });
+
+  show.addEventListener('click', openModal);
+
+  // Esc cancels via decline-like flow (only when user has already accepted before)
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && accepted) {
+      closeModal();
+    }
+  });
+}
 
   function closeModal() {
     modal.hidden = true;
