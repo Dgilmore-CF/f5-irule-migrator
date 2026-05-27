@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260527d" />
+    <link rel="stylesheet" href="/styles.css?v=20260527e" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   </head>
   <body>
@@ -142,7 +142,7 @@
               I understand &amp; agree
             </button>
           </div>
-          <p class="modal__build">build 20260527d</p>
+          <p class="modal__build">build 20260527e</p>
         </footer>
       </div>
     </div>
@@ -619,6 +619,147 @@
     <!-- Toast region -->
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-    <script src="/app.js?v=20260527d" type="module"></script>
+    <!--
+      Inline bootstrap. Handles the disclaimer modal entirely on its own so
+      it works even if /app.js is blocked by Rocket Loader, an extension, or
+      a CSP misconfiguration. The full app behavior comes from app.js, but
+      acknowledging the disclaimer never depends on it.
+
+      data-cfasync="false" opts both <script> tags out of Cloudflare Rocket
+      Loader rewriting (the standard remediation when RL breaks JS).
+    -->
+    <script data-cfasync="false">
+      (function () {
+        'use strict';
+        var BUILD = '20260527e';
+        var KEY = 'cf-f5-migrator:disclaimer-accepted:v2';
+        try {
+          window.console && console.info('[cf-f5-migrator] inline bootstrap · build', BUILD);
+        } catch (e) {}
+        window.__migrator_inline_ok = true;
+
+        function $(id) {
+          return document.getElementById(id);
+        }
+
+        function init() {
+          var modal = $('disclaimer-modal');
+          var app = $('app');
+          var agree = $('disclaimer-agree');
+          var accept = $('disclaimer-accept');
+          var decline = $('disclaimer-decline');
+          var errorEl = $('disclaimer-error');
+          var show = $('show-disclaimer-btn');
+          var label = document.querySelector('.checkbox');
+          if (!modal || !app || !agree || !accept || !decline || !errorEl || !show || !label) {
+            return;
+          }
+
+          var accepted = false;
+          try {
+            accepted = localStorage.getItem(KEY) === 'true';
+          } catch (e) {}
+
+          function setLocked(locked) {
+            if (locked) {
+              accept.classList.add('is-locked');
+              accept.setAttribute('aria-disabled', 'true');
+            } else {
+              accept.classList.remove('is-locked');
+              accept.setAttribute('aria-disabled', 'false');
+              errorEl.hidden = true;
+              label.classList.remove('is-attention');
+            }
+          }
+
+          function openModal() {
+            modal.hidden = false;
+            app.hidden = true;
+            agree.checked = false;
+            setLocked(true);
+            errorEl.hidden = true;
+            label.classList.remove('is-attention');
+            document.body.style.overflow = 'hidden';
+          }
+
+          function closeModal() {
+            modal.hidden = true;
+            app.hidden = false;
+            document.body.style.overflow = '';
+          }
+
+          function flagMissing() {
+            errorEl.hidden = false;
+            label.classList.remove('is-attention');
+            void label.offsetWidth;
+            label.classList.add('is-attention');
+            try {
+              agree.focus();
+            } catch (e) {}
+          }
+
+          if (!accepted) {
+            openModal();
+          } else {
+            closeModal();
+          }
+
+          function syncLocked() {
+            setLocked(!agree.checked);
+          }
+          agree.addEventListener('change', syncLocked);
+          agree.addEventListener('input', syncLocked);
+          agree.addEventListener('click', syncLocked);
+
+          function onAccept() {
+            if (!agree.checked) {
+              flagMissing();
+              return;
+            }
+            try {
+              localStorage.setItem(KEY, 'true');
+            } catch (e) {}
+            closeModal();
+          }
+          function onDecline() {
+            document.body.innerHTML =
+              '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;text-align:center;padding:24px;color:#475569"><div><h1 style="font-size:28px;margin-bottom:12px;color:#0f172a">Acknowledgment required</h1><p style="max-width:480px">You must accept the disclaimer to use this tool. Close this tab to exit, or refresh to reread the notice.</p></div></div>';
+          }
+
+          accept.addEventListener('click', onAccept);
+          accept.addEventListener('pointerup', onAccept);
+          accept.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onAccept();
+            }
+          });
+          decline.addEventListener('click', onDecline);
+          show.addEventListener('click', openModal);
+
+          // Document-level delegation as a final fallback.
+          document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t) return;
+            if (t.closest && t.closest('#disclaimer-accept')) {
+              onAccept();
+            } else if (t.closest && t.closest('#disclaimer-decline')) {
+              onDecline();
+            }
+          });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            init();
+            window.__migrator_disclaimer_ready = true;
+          });
+        } else {
+          init();
+          window.__migrator_disclaimer_ready = true;
+        }
+      })();
+    </script>
+    <script src="/app.js?v=20260527e" defer data-cfasync="false"></script>
   </body>
 </html>

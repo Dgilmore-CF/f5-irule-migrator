@@ -1,17 +1,25 @@
 // @ts-check
+'use strict';
 /**
  * Client-side controller for the F5 → Cloudflare migrator UI.
  *
- * No framework, no build step — plain ES module loaded by index.html.
- * The disclaimer modal blocks the rest of the UI until accepted.
+ * Plain (non-module) ES2022 script. We do NOT use type="module" because
+ * Cloudflare Rocket Loader (when enabled on the zone) can rewrite module
+ * scripts in ways that prevent them from executing. The data-cfasync="false"
+ * attribute on the <script> tag in index.html opts this file out of Rocket
+ * Loader entirely.
  */
 
-const BUILD_ID = '20260527d';
+const BUILD_ID = '20260527e';
 const DISCLAIMER_KEY = 'cf-f5-migrator:disclaimer-accepted:v2';
 const MAX_INPUT_BYTES = 5 * 1024 * 1024; // 5 MB
 
 // eslint-disable-next-line no-console
 console.info('[cf-f5-migrator] app.js loaded · build', BUILD_ID);
+
+// Mark a global so the disclaimer can detect whether app.js actually ran
+// even if the boot handler never fires for some reason.
+/** @type {any} */ (window).__migrator_app_loaded = true;
 
 const SAMPLE_IRULE = `when HTTP_REQUEST {
     if { [HTTP::uri] starts_with "/old-path" } {
@@ -722,7 +730,11 @@ function initSamples() {
 // Boot
 // ---------------------------------------------------------------------------
 function boot() {
-  initDisclaimer();
+  // The inline bootstrap in index.html already wired up the disclaimer modal.
+  // Only re-initialize if the inline copy never ran (e.g., CSP blocked it).
+  if (!(/** @type {any} */ (window).__migrator_disclaimer_ready)) {
+    initDisclaimer();
+  }
   initTabs();
   initFileHandling();
   initCopyDelegate();
