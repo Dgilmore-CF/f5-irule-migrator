@@ -1,13 +1,39 @@
 {
-  "name": "f5-irule-migrator",
-  "version": "1.0.0",
-  "description": "Convert F5 iRules to Cloudflare Rules",
-  "main": "src/index.js",
+  "name": "cf-f5-migrator",
+  "version": "2.0.0",
+  "description": "Convert F5 BIG-IP iRules and ASM policies to Cloudflare Rules, WAF, and Snippets. Community tool — not an official Cloudflare product.",
+  "type": "module",
+  "main": "src/worker.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,html,css,json}\" \"test/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,html,css,json}\" \"test/**/*.{ts,js,json}\"",
+    "check": "npm run typecheck && npm run lint && npm test"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "@types/node": "^22.7.4",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "@vitest/coverage-v8": "^2.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2",
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

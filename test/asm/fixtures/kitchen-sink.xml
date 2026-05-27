@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policy>
+  <name>kitchen-sink</name>
+  <description>Synthetic ASM policy exercising every supported subsystem.</description>
+  <enforcement_mode>blocking</enforcement_mode>
+  <application_language>utf-8</application_language>
+
+  <signature_settings>
+    <signature_set name="OWASP Top Ten" enabled="true"/>
+    <signature_set name="High Accuracy Signatures" enabled="true"/>
+    <signature id="200000001" name="SQL Injection" enabled="true" action="block"/>
+    <signature id="200001475" name="XSS Reflected" enabled="true" action="block"/>
+    <signature id="200002000" name="Path Traversal" enabled="true" action="alarm"/>
+  </signature_settings>
+
+  <urls>
+    <allowed_url>
+      <protocol>https</protocol>
+      <name>/api/*</name>
+      <method>GET</method>
+      <method>POST</method>
+    </allowed_url>
+    <allowed_url>
+      <name>/health</name>
+    </allowed_url>
+    <disallowed_url>
+      <name>/admin/internal/*</name>
+    </disallowed_url>
+  </urls>
+
+  <file_types>
+    <allowed_file_type>jpg</allowed_file_type>
+    <allowed_file_type>png</allowed_file_type>
+    <allowed_file_type>pdf</allowed_file_type>
+    <disallowed_file_type>exe</disallowed_file_type>
+    <disallowed_file_type>bat</disallowed_file_type>
+  </file_types>
+
+  <allowed_methods>
+    <method>GET</method>
+    <method>POST</method>
+    <method>PUT</method>
+    <method>DELETE</method>
+  </allowed_methods>
+
+  <parameters>
+    <parameter>
+      <name>username</name>
+      <type>static</type>
+      <required>true</required>
+      <regex>^[A-Za-z0-9_]+$</regex>
+      <max_length>64</max_length>
+    </parameter>
+    <parameter>
+      <name>token</name>
+      <max_length>256</max_length>
+    </parameter>
+  </parameters>
+
+  <headers>
+    <header>
+      <name>X-Debug-Mode</name>
+      <action>block</action>
+    </header>
+  </headers>
+
+  <cookies>
+    <cookie>
+      <name>session_id</name>
+      <signed>true</signed>
+      <http_only>true</http_only>
+      <secure>true</secure>
+    </cookie>
+  </cookies>
+
+  <ip_intelligence enabled="true">
+    <category name="anonymous_proxy" action="block"/>
+    <category name="tor_exit_nodes" action="block"/>
+    <category name="scanners" action="block"/>
+  </ip_intelligence>
+
+  <geolocation_enforcement>
+    <country code="CN" action="block"/>
+    <country code="RU" action="block"/>
+    <country code="KP" action="block"/>
+  </geolocation_enforcement>
+
+  <ip_exceptions>
+    <ip cidr="203.0.113.0/24" action="allow"/>
+    <ip cidr="198.51.100.42/32" action="block"/>
+  </ip_exceptions>
+
+  <bot_defense enabled="true">
+    <mitigation_level>strict</mitigation_level>
+  </bot_defense>
+
+  <brute_force_prevention enabled="true">
+    <login_url>/login</login_url>
+    <max_failed_logins>5</max_failed_logins>
+    <failed_login_interval>60</failed_login_interval>
+  </brute_force_prevention>
+
+  <csrf_protection enabled="true">
+    <url>/account/*</url>
+    <url>/transfer</url>
+  </csrf_protection>
+
+  <login_enforcement enabled="true">
+    <authenticated_url>/account/*</authenticated_url>
+    <login_url>/login</login_url>
+  </login_enforcement>
+
+  <session_tracking enabled="true">
+    <track_by>session_cookie</track_by>
+  </session_tracking>
+
+  <data_guard enabled="true">
+    <pattern name="credit_card"/>
+    <pattern name="us_ssn"/>
+    <custom_pattern name="employee_id">
+      <regex>EMP-\d{6}</regex>
+    </custom_pattern>
+  </data_guard>
+
+  <response_pages>
+    <response_page type="default">
+      <body>Request blocked by policy</body>
+      <status_code>403</status_code>
+    </response_page>
+  </response_pages>
+</policy>

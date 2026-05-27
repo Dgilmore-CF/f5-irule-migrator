@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policy>
+  <name>learning-policy</name>
+  <enforcement_mode>transparent</enforcement_mode>
+  <signature_settings>
+    <signature_set name="OWASP Top Ten" enabled="true"/>
+  </signature_settings>
+  <disallowed_url>
+    <name>/forbidden/*</name>
+  </disallowed_url>
+  <geolocation_enforcement>
+    <country code="CN" action="block"/>
+  </geolocation_enforcement>
+</policy>

@@ -2,11 +2,8 @@ name: Deploy to Cloudflare Workers
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -14,8 +11,10 @@ env:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
     name: Deploy
+    runs-on: ubuntu-latest
+    # Don't deploy on PRs — CI workflow handles validation.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,20 +23,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Install Wrangler
-        run: npm install -g wrangler
+      - name: Typecheck
+        run: npm run typecheck
 
-      - name: Check Wrangler Version
-        run: wrangler --version
+      - name: Test
+        run: npm test
 
       - name: Deploy to Cloudflare Workers
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: wrangler deploy
-
-      - name: Dry Run (Pull Request)
-        if: github.event_name == 'pull_request'
-        run: wrangler deploy --dry-run
+        run: npx wrangler deploy --env=""
