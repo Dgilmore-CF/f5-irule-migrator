@@ -23,14 +23,19 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
-  // CSP: allow Google Fonts CSS + JetBrains Mono / Inter assets, inline styles inside SVGs.
+  // CSP: allow Google Fonts + Cloudflare's auto-injected Web Analytics beacon
+  // (static.cloudflareinsights.com) and its small inline bootstrap (which the
+  // CF edge injects when Web Analytics or Email Obfuscation is enabled on the
+  // zone). 'unsafe-inline' on script-src is scoped to elements only and is
+  // unavoidable for the CF injected bootstrap — there is no nonce we can sync.
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+    "script-src-elem 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",

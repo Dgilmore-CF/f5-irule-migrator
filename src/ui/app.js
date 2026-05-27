@@ -114,19 +114,13 @@ const SAMPLE_ASM = `<?xml version="1.0" encoding="UTF-8"?>
 function initDisclaimer() {
   const modal = document.getElementById('disclaimer-modal');
   const app = document.getElementById('app');
-  const agree = /** @type {HTMLInputElement|null} */ (
-    document.getElementById('disclaimer-agree')
-  );
-  const agreeLabel = /** @type {HTMLElement|null} */ (
-    document.querySelector('.checkbox')
-  );
+  const agree = /** @type {HTMLInputElement|null} */ (document.getElementById('disclaimer-agree'));
+  const agreeLabel = /** @type {HTMLElement|null} */ (document.querySelector('.checkbox'));
   const accept = /** @type {HTMLButtonElement|null} */ (
     document.getElementById('disclaimer-accept')
   );
   const decline = document.getElementById('disclaimer-decline');
-  const errorEl = /** @type {HTMLElement|null} */ (
-    document.getElementById('disclaimer-error')
-  );
+  const errorEl = /** @type {HTMLElement|null} */ (document.getElementById('disclaimer-error'));
   const show = document.getElementById('show-disclaimer-btn');
 
   if (!modal || !app || !agree || !accept || !decline || !errorEl || !show || !agreeLabel) {
@@ -188,47 +182,6 @@ function initDisclaimer() {
       flagMissingCheckbox();
       return;
     }
-    try {
-      localStorage.setItem(DISCLAIMER_KEY, 'true');
-    } catch {
-      /* private mode — ignore */
-    }
-    closeModal();
-  });
-
-  decline.addEventListener('click', () => {
-    document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;text-align:center;padding:24px;color:#475569"><div><h1 style="font-size:28px;margin-bottom:12px;color:#0f172a">Acknowledgment required</h1><p style="max-width:480px">You must accept the disclaimer to use this tool. Close this tab to exit, or refresh to reread the notice.</p></div></div>';
-  });
-
-  show.addEventListener('click', openModal);
-
-  // Esc cancels via decline-like flow (only when user has already accepted before)
-  modal.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && accepted) {
-      closeModal();
-    }
-  });
-}
-
-  function closeModal() {
-    modal.hidden = true;
-    app.hidden = false;
-    document.body.style.overflow = '';
-  }
-
-  if (!accepted) {
-    openModal();
-  } else {
-    closeModal();
-  }
-
-  agree.addEventListener('change', () => {
-    accept.disabled = !agree.checked;
-  });
-
-  accept.addEventListener('click', () => {
-    if (!agree.checked) return;
     try {
       localStorage.setItem(DISCLAIMER_KEY, 'true');
     } catch {
